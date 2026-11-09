@@ -336,6 +336,8 @@ const renderGraph = () => {
   const container = graphContainer.value
   const width = container.clientWidth
   const height = container.clientHeight
+  // A hidden panel has no size; the resize observer draws it once it's shown
+  if (!width || !height) return
   
   const svg = d3.select(graphSvg.value)
     .attr('width', width)
@@ -797,16 +799,22 @@ watch(showEdgeLabels, (newVal) => {
   }
 })
 
-const handleResize = () => {
-  nextTick(renderGraph)
-}
+// Redraw when the panel's size changes, including when a hidden panel is shown.
+// Debounced because switching views animates the width.
+let resizeObserver = null
+let resizeTimer = null
 
 onMounted(() => {
-  window.addEventListener('resize', handleResize)
+  resizeObserver = new ResizeObserver(() => {
+    clearTimeout(resizeTimer)
+    resizeTimer = setTimeout(renderGraph, 200)
+  })
+  resizeObserver.observe(graphContainer.value)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
+  resizeObserver?.disconnect()
+  clearTimeout(resizeTimer)
   if (currentSimulation) {
     currentSimulation.stop()
   }
