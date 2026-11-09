@@ -21,10 +21,11 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'mirofish-secret-key')
     DEBUG = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
 
-    # Login: every /api route except login requires these credentials
+    # Login: every /api route except login requires these credentials.
+    # The defaults are public (this repo is public); set the env vars to override them.
     AUTH_ENABLED = True
-    ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME')
-    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
+    ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME') or 'admin'
+    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD') or 'casella123'
 
     # Allowed frontend origins, comma separated; "*" allows any
     CORS_ORIGINS = [
@@ -80,8 +81,6 @@ class Config:
             errors.append("LLM_API_KEY 未配置")
         if not cls.ZEP_API_KEY:
             errors.append("ZEP_API_KEY 未配置")
-        if not cls.ADMIN_USERNAME or not cls.ADMIN_PASSWORD:
-            errors.append("ADMIN_USERNAME and ADMIN_PASSWORD must be set for the login page")
         if os.environ.get("ZEP_API_URL"):
             errors.append("ZEP_API_URL 不受支持；MiroFish 仅连接 Zep Cloud")
         if cls.DEBUG:
