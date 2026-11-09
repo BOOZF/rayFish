@@ -222,7 +222,8 @@ class ZepEntityReader:
         self, 
         graph_id: str,
         defined_entity_types: Optional[List[str]] = None,
-        enrich_with_edges: bool = True
+        enrich_with_edges: bool = True,
+        excluded_entity_names: Optional[List[str]] = None,
     ) -> FilteredEntities:
         """
         筛选出符合预定义实体类型的节点
@@ -235,6 +236,8 @@ class ZepEntityReader:
             graph_id: 图谱ID
             defined_entity_types: 预定义的实体类型列表（可选，如果提供则只保留这些类型）
             enrich_with_edges: 是否获取每个实体的相关边信息
+            excluded_entity_names: Entity names (case-insensitive) that must not become agents.
+                They stay in the graph and remain visible as related nodes.
             
         Returns:
             FilteredEntities: 过滤后的实体集合
@@ -254,8 +257,12 @@ class ZepEntityReader:
         # 筛选符合条件的实体
         filtered_entities = []
         entity_types_found = set()
+        excluded_names = {name.strip().casefold() for name in excluded_entity_names or []}
         
         for node in all_nodes:
+            if node["name"].strip().casefold() in excluded_names:
+                continue
+
             labels = node.get("labels", [])
             
             # 筛选逻辑：Labels必须包含除"Entity"和"Node"之外的标签

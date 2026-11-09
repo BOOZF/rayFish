@@ -414,7 +414,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { chatWithReport, getReport, getAgentLog } from '../api/report'
-import { interviewAgents, getSimulationProfilesRealtime } from '../api/simulation'
+import { getEnvStatus, interviewAgents, getSimulationProfilesRealtime } from '../api/simulation'
 
 const { t } = useI18n()
 
@@ -709,6 +709,18 @@ const sendToReportAgent = async (message) => {
   }
 }
 
+// A Twitter interview rebuilds that platform's recommendations first, which can
+// outlast the request timeout. Use Reddit whenever this simulation has it.
+const getChatPlatform = async () => {
+  const res = await getEnvStatus({ simulation_id: props.simulationId })
+  return res.data?.reddit_available ? 'reddit' : undefined
+}
+
+// Replies from saved data aren't from the live agent, so say so on every reply
+const withSavedLabel = (agentResult, text) => {
+  return agentResult.reconstructed ? `${t('step5.savedReplyLabel')}\n\n${text}` : text
+}
+
 const sendToAgent = async (message) => {
   if (!selectedAgent.value || selectedAgentIndex.value === null) {
     throw new Error(t('step5.selectAgentFirst'))
@@ -729,6 +741,7 @@ const sendToAgent = async (message) => {
   
   const res = await interviewAgents({
     simulation_id: props.simulationId,
+    platform: await getChatPlatform(),
     interviews: [{
       agent_id: selectedAgentIndex.value,
       prompt: prompt
@@ -751,7 +764,7 @@ const sendToAgent = async (message) => {
       const twitterKey = `twitter_${agentId}`
       const agentResult = resultsDict[redditKey] || resultsDict[twitterKey] || Object.values(resultsDict)[0]
       if (agentResult) {
-        responseContent = agentResult.response || agentResult.answer
+        responseContent = withSavedLabel(agentResult, agentResult.response || agentResult.answer)
       }
     } else if (Array.isArray(resultsDict) && resultsDict.length > 0) {
       // 兼容数组格式
@@ -816,6 +829,7 @@ const submitSurvey = async () => {
     
     const res = await interviewAgents({
       simulation_id: props.simulationId,
+      platform: await getChatPlatform(),
       interviews: interviews
     })
     
@@ -838,9 +852,13 @@ const submitSurvey = async () => {
         if (typeof resultsDict === 'object' && !Array.isArray(resultsDict)) {
           const redditKey = `reddit_${agentIdx}`
           const twitterKey = `twitter_${agentIdx}`
-          const agentResult = resultsDict[redditKey] || resultsDict[twitterKey]
+          const savedKey = `saved_${agentIdx}`
+          const agentResult = resultsDict[redditKey] || resultsDict[twitterKey] || resultsDict[savedKey]
           if (agentResult) {
-            responseContent = agentResult.response || agentResult.answer || t('step5.noResponse')
+            responseContent = withSavedLabel(
+              agentResult,
+              agentResult.response || agentResult.answer || t('step5.noResponse')
+            )
           }
         } else if (Array.isArray(resultsDict)) {
           // 兼容数组格式

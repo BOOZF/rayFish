@@ -9,7 +9,7 @@ import warnings
 # 需要在所有其他导入之前设置
 warnings.filterwarnings("ignore", message=".*resource_tracker.*")
 
-from flask import Flask, request
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 from .config import Config
@@ -40,7 +40,7 @@ def create_app(config_class=Config):
         logger.info("=" * 50)
     
     # 启用CORS
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    CORS(app, resources={r"/api/*": {"origins": app.config['CORS_ORIGINS']}})
     
     # 注册模拟进程清理函数（确保服务器关闭时终止所有模拟进程）
     from .services.simulation_runner import SimulationRunner
@@ -62,8 +62,24 @@ def create_app(config_class=Config):
         logger.debug(f"响应: {response.status_code}")
         return response
     
+    # Login check for every /api route except the login itself
+    from .api.auth import auth_bp, is_authorized
+
+    @app.before_request
+    def require_login():
+        if (
+            not app.config.get('AUTH_ENABLED', True)
+            or request.method == 'OPTIONS'
+            or not request.path.startswith('/api/')
+            or request.path == '/api/auth/login'
+            or is_authorized(request.headers.get('Authorization'))
+        ):
+            return None
+        return jsonify({'success': False, 'error': 'Login required'}), 401
+
     # 注册蓝图
     from .api import graph_bp, simulation_bp, report_bp
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(graph_bp, url_prefix='/api/graph')
     app.register_blueprint(simulation_bp, url_prefix='/api/simulation')
     app.register_blueprint(report_bp, url_prefix='/api/report')

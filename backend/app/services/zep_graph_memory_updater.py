@@ -3,6 +3,7 @@ Zep图谱记忆更新服务
 将模拟中的Agent活动动态更新到Zep图谱中
 """
 
+import math
 import time
 import threading
 from typing import Dict, Any, List, Optional
@@ -235,6 +236,13 @@ class ZepGraphMemoryUpdater:
     
     # 发送间隔（秒），避免请求过快
     SEND_INTERVAL = 0.5
+
+    # Zep bills by episode size, and likes and follows repeat the whole post they
+    # act on. Only content goes to Zep; every action stays in actions.jsonl and SQLite.
+    ZEP_CONTENT_ACTIONS = frozenset({"CREATE_POST", "QUOTE_POST", "CREATE_COMMENT"})
+    ZEP_BYTES_PER_CREDIT = 350
+    # Per-simulation cap, so one run cannot exhaust a 10,000-credit free plan.
+    ZEP_CREDIT_BUDGET = 8000
     
     # Zep recommends keeping an episode below 10,000 characters. Leave room
     # for future source formatting changes.
@@ -285,6 +293,7 @@ class ZepGraphMemoryUpdater:
         self._skipped_count = 0     # 被过滤跳过的活动数（DO_NOTHING）
         self._failed_batches: List[Dict[str, Any]] = []
         self._pending_episode_uuids: List[str] = []
+        self._estimated_credits = 0
         
         logger.info(f"ZepGraphMemoryUpdater 初始化完成: graph_id={graph_id}, batch_size={self.BATCH_SIZE}")
     
@@ -368,8 +377,7 @@ class ZepGraphMemoryUpdater:
         Args:
             activity: Agent活动记录
         """
-        # 跳过DO_NOTHING类型的活动
-        if activity.action_type == "DO_NOTHING":
+        if activity.action_type not in self.ZEP_CONTENT_ACTIONS:
             self._skipped_count += 1
             return
 
@@ -490,6 +498,15 @@ class ZepGraphMemoryUpdater:
         for payload_activities, combined_text in self._build_episode_payloads(activities):
             if deadline is not None and time.time() >= deadline:
                 raise _DrainDeadlineExceeded(processed_count)
+            credits = math.ceil(len(combined_text.encode("utf-8")) / self.ZEP_BYTES_PER_CREDIT)
+            if self._estimated_credits + credits > self.ZEP_CREDIT_BUDGET:
+                logger.warning(
+                    f"Zep credit budget reached ({self._estimated_credits}/{self.ZEP_CREDIT_BUDGET}); "
+                    f"skipping {len(payload_activities)} activities"
+                )
+                self._skipped_count += len(payload_activities)
+                processed_count += len(payload_activities)
+                continue
             try:
                 episode = self.client.graph.add(
                     graph_id=self.graph_id,
@@ -523,6 +540,7 @@ class ZepGraphMemoryUpdater:
                 if not episode_uuid:
                     raise RuntimeError("Zep graph.add returned no episode UUID")
                 self._pending_episode_uuids.append(str(episode_uuid))
+                self._estimated_credits += credits
                 self._total_sent += 1
                 self._total_items_sent += len(payload_activities)
                 display_name = self._get_platform_display_name(platform)

@@ -1,5 +1,6 @@
 import axios from 'axios'
 import i18n from '../i18n'
+import { clearToken, getToken } from './session'
 
 // 创建axios实例
 const service = axios.create({
@@ -14,6 +15,10 @@ const service = axios.create({
 service.interceptors.request.use(
   config => {
     config.headers['Accept-Language'] = i18n.global.locale.value
+    const token = getToken()
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
     return config
   },
   error => {
@@ -38,6 +43,13 @@ service.interceptors.response.use(
   error => {
     console.error('Response error:', error)
     const apiError = error.response?.data?.error || error.response?.data?.message
+
+    // Expired or invalid session: go back to the login page
+    if (error.response?.status === 401 && !error.config?.url?.endsWith('/api/auth/login')) {
+      clearToken()
+      const redirect = encodeURIComponent(window.location.pathname + window.location.search)
+      window.location.assign(`/login?redirect=${redirect}`)
+    }
     
     // 处理超时
     if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {

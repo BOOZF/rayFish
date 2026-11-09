@@ -21,3 +21,6 @@ frontend/dist
 frontend/.vite
 
 backend/uploads
+
+# Local notes must never go into an image
+mydoc

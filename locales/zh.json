@@ -1,4 +1,13 @@
 {
+  "login": {
+    "subtitle": "登录后继续",
+    "username": "用户名",
+    "password": "密码",
+    "submit": "登录",
+    "submitting": "登录中...",
+    "invalid": "用户名或密码错误",
+    "failed": "无法登录，请检查后端是否正在运行。"
+  },
   "common": {
     "confirm": "确认",
     "cancel": "取消",
@@ -281,6 +290,7 @@
     "clearSelection": "清空",
     "errorOccurred": "抱歉，发生了错误: {error}",
     "noResponse": "无响应",
+    "savedReplyLabel": "[根据保存的运行数据重建，并非实时角色]",
     "requestFailed": "请求失败",
     "selectAgentFirst": "请先选择一个模拟个体"
   },

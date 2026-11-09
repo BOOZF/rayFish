@@ -173,6 +173,10 @@ except ImportError as e:
     print("请先安装: pip install oasis-ai camel-ai")
     sys.exit(1)
 
+from oasis_limits import apply_limits
+
+apply_limits()
+
 
 # Twitter可用动作（不包含INTERVIEW，INTERVIEW只能通过ManualAction手动触发）
 TWITTER_ACTIONS = [
@@ -1156,7 +1160,7 @@ async def run_twitter_simulation(
         agent_graph=result.agent_graph,
         platform=oasis.DefaultPlatformType.TWITTER,
         database_path=db_path,
-        semaphore=30,  # 限制最大并发 LLM 请求数，防止 API 过载
+        semaphore=10,  # 限制最大并发 LLM 请求数，防止 API 过载
     )
     
     await result.env.reset()
@@ -1347,7 +1351,7 @@ async def run_reddit_simulation(
         agent_graph=result.agent_graph,
         platform=oasis.DefaultPlatformType.REDDIT,
         database_path=db_path,
-        semaphore=30,  # 限制最大并发 LLM 请求数，防止 API 过载
+        semaphore=10,  # 限制最大并发 LLM 请求数，防止 API 过载
     )
     
     await result.env.reset()

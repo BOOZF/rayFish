@@ -1,0 +1,18 @@
+# Backend only, for hosts such as Fly.io. The frontend is hosted separately.
+FROM python:3.11-slim
+
+COPY --from=ghcr.io/astral-sh/uv:0.9.26 /uv /uvx /bin/
+
+WORKDIR /app
+COPY backend/pyproject.toml backend/uv.lock ./backend/
+RUN cd backend && uv sync --frozen --no-dev
+
+COPY locales ./locales
+COPY backend ./backend
+
+WORKDIR /app/backend
+EXPOSE 5001
+
+# One worker only: running simulations and report tasks are tracked in memory.
+# Timeout 0 because report generation can hold a request open for minutes.
+CMD ["uv", "run", "--frozen", "--no-dev", "gunicorn", "wsgi:app", "--bind", "0.0.0.0:5001", "--workers", "1", "--threads", "16", "--timeout", "0"]

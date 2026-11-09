@@ -249,7 +249,8 @@ class SimulationManager:
         defined_entity_types: Optional[List[str]] = None,
         use_llm_for_profiles: bool = True,
         progress_callback: Optional[callable] = None,
-        parallel_profile_count: int = 3
+        parallel_profile_count: int = 3,
+        excluded_entity_names: Optional[List[str]] = None,
     ) -> SimulationState:
         """
         准备模拟环境（全程自动化）
@@ -299,6 +300,7 @@ class SimulationManager:
             filtered = reader.filter_defined_entities(
                 graph_id=state.graph_id,
                 defined_entity_types=defined_entity_types,
+                excluded_entity_names=excluded_entity_names,
                 enrich_with_edges=True
             )
             

@@ -235,3 +235,31 @@ def test_flush_deadline_keeps_unattempted_platform_for_a_safe_retry(monkeypatch)
     updater._flush_remaining(deadline=1.0)
     assert updater._platform_buffers["reddit"] == []
     assert len(writes) == 2
+
+
+def test_only_content_actions_are_queued_for_zep(monkeypatch):
+    updater = _updater(monkeypatch, lambda **_kwargs: SimpleNamespace(uuid_="episode-1"))
+    updater._running = True
+
+    like = _activity()
+    like.action_type = "LIKE_POST"
+    updater.add_activity(like)
+    assert updater._activity_queue.empty()
+
+    updater.add_activity(_activity())
+    assert updater._activity_queue.qsize() == 1
+
+
+def test_credit_budget_stops_writes_without_failing_the_batch(monkeypatch):
+    writes = []
+    updater = _updater(
+        monkeypatch,
+        lambda **kwargs: writes.append(kwargs) or SimpleNamespace(uuid_="episode-1"),
+    )
+    updater.ZEP_CREDIT_BUDGET = 1
+
+    assert updater._send_batch_activities([_activity(1)], "twitter") == 1
+    assert updater._send_batch_activities([_activity(2, "x" * 1000)], "twitter") == 1
+
+    assert len(writes) == 1
+    assert updater._failed_count == 0

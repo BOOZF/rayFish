@@ -1,4 +1,13 @@
 {
+  "login": {
+    "subtitle": "Sign in to continue",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in...",
+    "invalid": "Incorrect username or password",
+    "failed": "Could not sign in. Check that the backend is running."
+  },
   "common": {
     "confirm": "Confirm",
     "cancel": "Cancel",
@@ -281,6 +290,7 @@
     "clearSelection": "Clear",
     "errorOccurred": "Sorry, an error occurred: {error}",
     "noResponse": "No response",
+    "savedReplyLabel": "[Rebuilt from saved run data, not the live persona]",
     "requestFailed": "Request failed",
     "selectAgentFirst": "Please select a simulated individual first"
   },

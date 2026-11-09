@@ -1,0 +1,27 @@
+# Set "app" to your own unique name before the first deploy.
+app = "casella-mirofish"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile.backend"
+
+[mounts]
+  source = "mirofish_uploads"
+  destination = "/app/backend/uploads"
+
+[http_service]
+  internal_port = 5001
+  force_https = true
+  auto_stop_machines = "off"
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/health"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "30s"
+
+[[vm]]
+  memory = "2gb"
+  cpus = 1

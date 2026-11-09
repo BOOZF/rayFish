@@ -13,6 +13,7 @@ from ..config import Config
 from ..services.zep_entity_reader import ZepEntityReader
 from ..services.oasis_profile_generator import OasisProfileGenerator
 from ..services.simulation_manager import SimulationManager, SimulationStatus
+from ..services.saved_persona_chat import answer_from_saved_data, has_saved_activity
 from ..services.simulation_runner import (
     SimulationRunner,
     RunnerStatus,
@@ -410,6 +411,7 @@ def prepare_simulation():
         {
             "simulation_id": "sim_xxxx",                   // 必填，模拟ID
             "entity_types": ["Student", "PublicFigure"],  // 可选，指定实体类型
+            "excluded_entity_names": ["Google"],          // 可选，这些实体不会成为 Agent
             "use_llm_for_profiles": true,                 // 可选，是否用LLM生成人设
             "parallel_profile_count": 5,                  // 可选，并行生成人设数量，默认5
             "force_regenerate": false                     // 可选，强制重新生成，默认false
@@ -495,6 +497,7 @@ def prepare_simulation():
         document_text = ProjectManager.get_extracted_text(state.project_id) or ""
         
         entity_types_list = data.get('entity_types')
+        excluded_entity_names = data.get('excluded_entity_names')
         use_llm_for_profiles = data.get('use_llm_for_profiles', True)
         parallel_profile_count = data.get('parallel_profile_count', 5)
         
@@ -507,7 +510,8 @@ def prepare_simulation():
             filtered_preview = reader.filter_defined_entities(
                 graph_id=state.graph_id,
                 defined_entity_types=entity_types_list,
-                enrich_with_edges=False  # 不获取边信息，加快速度
+                enrich_with_edges=False,  # 不获取边信息，加快速度
+                excluded_entity_names=excluded_entity_names,
             )
             # 保存实体数量到状态（供前端立即获取）
             state.entities_count = filtered_preview.filtered_count
@@ -615,6 +619,7 @@ def prepare_simulation():
                     simulation_requirement=simulation_requirement,
                     document_text=document_text,
                     defined_entity_types=entity_types_list,
+                    excluded_entity_names=excluded_entity_names,
                     use_llm_for_profiles=use_llm_for_profiles,
                     progress_callback=progress_callback,
                     parallel_profile_count=parallel_profile_count
@@ -2523,6 +2528,13 @@ def interview_agents_batch():
 
         # 检查环境状态
         if not SimulationRunner.check_env_alive(simulation_id):
+            # The live agents are gone, so reconstruct the replies from saved run data
+            sim_dir = os.path.join(SimulationRunner.RUN_STATE_DIR, simulation_id)
+            if has_saved_activity(sim_dir):
+                return jsonify({
+                    "success": True,
+                    "data": answer_from_saved_data(sim_dir, interviews)
+                })
             return jsonify({
                 "success": False,
                 "error": t('api.envNotRunning')

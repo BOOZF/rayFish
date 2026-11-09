@@ -1302,7 +1302,10 @@ const InterviewDisplay = {
     // 获取某个问题的当前平台选择
     const getPlatformTab = (agentIdx, qIdx) => {
       const key = `${agentIdx}-${qIdx}`
-      return platformTabs[key] || 'twitter'
+      if (platformTabs[key]) return platformTabs[key]
+      // Open on whichever platform actually answered
+      const twitterAnswer = props.result.interviews[agentIdx]?.twitterAnswer
+      return isPlaceholderText(twitterAnswer) ? 'reddit' : 'twitter'
     }
     
     // 设置某个问题的平台选择

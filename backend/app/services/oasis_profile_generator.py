@@ -237,7 +237,8 @@ class OasisProfileGenerator:
     # 群体/机构类型实体（需要生成群体代表人设）
     GROUP_ENTITY_TYPES = [
         "university", "governmentagency", "organization", "ngo", 
-        "mediaoutlet", "company", "institution", "group", "community"
+        "mediaoutlet", "company", "institution", "group", "community",
+        "localmerchant", "communitygroup"
     ]
     
     def __init__(
@@ -530,8 +531,8 @@ class OasisProfileGenerator:
         return "\n\n".join(context_parts)
     
     def _is_individual_entity(self, entity_type: str) -> bool:
-        """判断是否是个人类型实体"""
-        return entity_type.lower() in self.INDIVIDUAL_ENTITY_TYPES
+        """Ontology types are custom per project, so anything not known to be a group is a person."""
+        return not self._is_group_entity(entity_type)
     
     def _is_group_entity(self, entity_type: str) -> bool:
         """判断是否是群体/机构类型实体"""
